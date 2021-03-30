@@ -1,0 +1,6 @@
+include ':JS-CloudMessaging'
+include ':JS-Auth'
+include ':JS-DynamicDatabase'
+include ':JS-Push'
+include ':app'
+rootProject.name = "JS Cloud API"
