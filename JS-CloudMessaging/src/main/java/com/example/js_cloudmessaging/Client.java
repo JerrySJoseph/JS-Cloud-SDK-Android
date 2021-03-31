@@ -9,10 +9,13 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 public class Client {
+    //If implementing authentication, auth-token might be useful
     String authToken;
+
+    //unique device ID
     String clientID;
 
-    public Client() {
+    public Client(){
     }
 
     public Client(String authToken, String clientID) {

@@ -33,7 +33,7 @@ import io.socket.emitter.Emitter;
 import io.socket.engineio.client.Transport;
 import io.socket.engineio.client.transports.WebSocket;
 
-public abstract class ServerConnectionService extends Service
+public abstract class JSCloudMessagingService extends Service
 {
     static Socket mSocket=null;
     static String SERVER_URL=null;
