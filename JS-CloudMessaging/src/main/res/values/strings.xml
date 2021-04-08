@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="sDefaultNotifTitle">JS Cloud Messaging Service</string>
+    <string name="sDefaultNotifContent">JS Cloud Messaging Service is active now. You will receive realtime notifications when this service is active</string>
+    <string name="sDefaultNotifChannel">js-cloud-notif-service-channel</string>
+</resources>

@@ -8,17 +8,17 @@ import com.google.gson.Gson;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-public class Client {
+public class Device {
     //If implementing authentication, auth-token might be useful
     String authToken;
 
     //unique device ID
     String clientID;
 
-    public Client(){
+    public Device(){
     }
 
-    public Client(String authToken, String clientID) {
+    public Device(String authToken, String clientID) {
         this.authToken = authToken;
         this.clientID = clientID;
     }
@@ -39,10 +39,10 @@ public class Client {
         this.clientID = clientID;
     }
 
-    public static Client CreateClientForThisDevice(Context context, String authToken)
+    public static Device CreateClientForThisDevice(Context context, String authToken)
     {
         String uniqueDeviceID= Settings.Secure.getString(context.getContentResolver(), Settings.Secure.ANDROID_ID);
-        return new Client(authToken,uniqueDeviceID);
+        return new Device(authToken,uniqueDeviceID);
     }
 
     public String toJSONString()

@@ -1,64 +1,48 @@
 package com.example.js_cloudmessaging;
 
-import android.app.Activity;
 import android.app.Notification;
-import android.app.NotificationChannel;
 import android.app.NotificationManager;
-import android.app.PendingIntent;
 import android.app.Service;
-import android.content.Context;
 import android.content.Intent;
-import android.os.Build;
 import android.os.IBinder;
-import android.os.Looper;
 import android.util.Log;
 import android.widget.Toast;
 
 import androidx.annotation.Nullable;
-import androidx.annotation.RequiresApi;
-import androidx.core.app.NotificationCompat;
 
 import com.jstechnologies.notificationprovidermodule.NotificationProvider;
 
 import java.net.URISyntaxException;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
 
 import io.socket.client.Ack;
 import io.socket.client.IO;
-import io.socket.client.Manager;
 import io.socket.client.Socket;
 import io.socket.emitter.Emitter;
-import io.socket.engineio.client.Transport;
-import io.socket.engineio.client.transports.WebSocket;
 
 public abstract class JSCloudMessagingService extends Service
 {
     static Socket mSocket=null;
     static String SERVER_URL=null;
     static String TAG="Socket Service";
-    static String sDefaultNotifTitle="IoT Service";
-    static String sDefaultNotifContent="IoT Connected Service is active now. You will receive realtime notifications when this service is active";
-    static String sDefaultChannel="js-iot-notif-service-channel";
 
-
-    private ClientFactory mClientFactory= new ClientFactory() {
+    //Client factory
+    private DeviceFactory mDeviceFactory = new DeviceFactory() {
         @Override
-        public Client newClient() {
-            return Client.CreateClientForThisDevice(getApplicationContext(),"auth-token");
+        public Device newClient() {
+            return Device.CreateClientForThisDevice(getApplicationContext(),"my-auth-token");
         }
     };
 
+    //Notification factory
     private NotificationFactory mNotificationFactory= new NotificationFactory(){
         @Override
         public Notification newNotification() {
 
             return new NotificationProvider(getApplicationContext())
-                    .setTitle(sDefaultNotifTitle)
-                    .setBody(sDefaultNotifContent)
-                    .setChannelID(sDefaultChannel)
-                    .setChannelName(sDefaultChannel)
+                    .setTitle(getString(R.string.sDefaultNotifTitle))
+                    .setBody(getString(R.string.sDefaultNotifContent))
+                    .setChannelID(getString(R.string.sDefaultNotifChannel))
+                    .setChannelName(getString(R.string.sDefaultNotifChannel))
                     .setNotificationIcon(R.drawable.ic_iot)
                     .setImportance(NotificationManager.IMPORTANCE_HIGH)
                     .getNotificationInstance();
@@ -87,32 +71,50 @@ public abstract class JSCloudMessagingService extends Service
     @Override
     public IBinder onBind(Intent intent) { return null; }
 
+
+    //override this method to return server URL
     public abstract String getServerUrl();
+
+    //Called when new custom message recieved from server
     public abstract void onNewMessage(Object... args);
+
+    //called when new push messaged recieved from server
     public abstract void onNewPush(Object... args);
+
+    //set custom foreground Notification (compulsory)
+    public abstract Notification getNotification();
+
+    //called when any exception occurs
+    public abstract void onCloudException(JSCloudServerException exception);
+
+    //optional overrides
+    public void onCloudDisconnect(){ }
+
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-
         startForeground(101,getNotification());
-
         Log.e(TAG,"Service -on start");
-
         return START_STICKY;
     }
 
-    public abstract Notification getNotification();
-
+    //returns default notification object
     public Notification getDefaultNotification()
     {
         return mNotificationFactory.newNotification();
     }
 
+    //Register socket Events
     private void connectAndRegisterEvents(){
         try{
             mSocket.on(Socket.EVENT_CONNECT,onConnectListener);
             mSocket.on(Socket.EVENT_DISCONNECT,onDisconnectListener);
             mSocket.on(Socket.EVENT_CONNECT_ERROR,onConnectErrorListener);
+            //Change the event name for custom events
+            mSocket.on("cloud-event-other",onEventListener);
+
+            //Event listenere for push notification
+            mSocket.on("cloud-event-push",onPushNotificationListener);
             mSocket.connect();
         }catch (JSCloudServerException e)
         {
@@ -120,22 +122,23 @@ public abstract class JSCloudMessagingService extends Service
         }
 
     }
-    public abstract void onCloudException(JSCloudServerException exception);
-    public void onCloudDisconnect(){ }
 
-    Emitter.Listener onConnectListener= new Emitter.Listener() {
-        @Override
-        public void call(Object... args) {
-            Log.e(TAG,"Connected to server. Your socket id is "+ mSocket.id());
-            performClientHandshake();
-        }
+    //Fired on successful connection
+    Emitter.Listener onConnectListener= args -> {
+        Log.e(TAG,"Connected to server. Your socket id is "+ mSocket.id());
+        performClientHandshake();
     };
+
+    //Fired when disconnected from server
     Emitter.Listener onDisconnectListener= new Emitter.Listener() {
         @Override
         public void call(Object... args) {
             Log.e(TAG,"Disconnected from Server.");
+            onCloudDisconnect();
         }
     };
+
+    //Fired when error occurs while connecting
     Emitter.Listener onConnectErrorListener= new Emitter.Listener() {
         @Override
         public void call(Object... args) {
@@ -143,12 +146,8 @@ public abstract class JSCloudMessagingService extends Service
             onCloudException(new JSCloudServerException((Exception)args[0]));
         }
     };
-    Emitter.Listener onEventListener= new Emitter.Listener() {
-        @Override
-        public void call(Object... args) {
-           onNewMessage(args);
-        }
-    };
+
+    //Fired when push notification recieved
     Emitter.Listener onPushNotificationListener= new Emitter.Listener() {
         @Override
         public void call(Object... args) {
@@ -156,15 +155,26 @@ public abstract class JSCloudMessagingService extends Service
         }
     };
 
+    //Fired on other events
+    Emitter.Listener onEventListener= new Emitter.Listener() {
+        @Override
+        public void call(Object... args) {
+           onNewMessage(args);
+        }
+    };
+
+
+    //Client handshake for registering client in server
     private void performClientHandshake()
     {
-        Client me=mClientFactory.newClient();
+        Device me= mDeviceFactory.newClient();
         mSocket.emit("client-handshake", me.toJSONString(), new Ack() {
             @Override
             public void call(Object... args) {
+
+                //Handshake successfull. Register all push and other event listener for communication
                 Log.e(TAG,(String)args[0]);
-                mSocket.on("cloud-event-other",onEventListener);
-                mSocket.on("cloud-event-push",onPushNotificationListener);
+
             }
         });
     }
@@ -172,7 +182,9 @@ public abstract class JSCloudMessagingService extends Service
     @Override
     public void onDestroy() {
         super.onDestroy();
+        mSocket.off();
         mSocket.disconnect();
+
         Log.e(TAG,"Service -on destroy");
         Toast.makeText(getApplicationContext(),"Service destroyed",Toast.LENGTH_SHORT).show();
     }

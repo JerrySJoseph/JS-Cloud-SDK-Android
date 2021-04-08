@@ -1,3 +1,4 @@
+include ':JSCloud-core'
 include ':JS-CloudMessaging'
 include ':JS-Auth'
 include ':JS-DynamicDatabase'
