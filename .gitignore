@@ -13,3 +13,4 @@
 .externalNativeBuild
 .cxx
 local.properties
+JS-Auth/src/main/java/com/example/js_auth/credentials.json
