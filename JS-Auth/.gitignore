@@ -1,2 +1,2 @@
 /build
-credentials.json
+**/credentials.json
