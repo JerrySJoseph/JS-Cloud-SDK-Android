@@ -2,6 +2,7 @@ package com.example.js_auth.Helpers;
 
 import com.example.js_auth.Models.AuthMode;
 import com.example.js_auth.Models.AuthType;
+import com.example.js_auth.Models.JSCloudUser;
 import com.google.gson.Gson;
 
 public class AuthRequest {
@@ -9,6 +10,15 @@ public class AuthRequest {
     AuthMode authMode;
     String idToken;
     long iat;
+    JSCloudUser user;
+
+    public JSCloudUser getUser() {
+        return user;
+    }
+
+    public void setUser(JSCloudUser user) {
+        this.user = user;
+    }
 
     public AuthRequest(AuthType authType, AuthMode authMode, String idToken) {
         this.authType = authType;
