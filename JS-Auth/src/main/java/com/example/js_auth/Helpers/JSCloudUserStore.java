@@ -19,5 +19,37 @@ public class JSCloudUserStore {
         SharedPreferences sharedPreferences=context.getSharedPreferences("js_cloud_user_save_data",Context.MODE_PRIVATE);
         return sharedPreferences.getString("cached_user_data",null);
     }
+    public static void saveAccessToken(Context context,String userJsonString)
+    {
+        SharedPreferences sharedPreferences=context.getSharedPreferences("js_cloud_user_save_data",Context.MODE_PRIVATE);
+        SharedPreferences.Editor editor= sharedPreferences.edit();
+        editor.putString("cached_access_token",userJsonString);
+        editor.commit();
 
+    }
+    public static String getAccessToken(Context context)
+    {
+        SharedPreferences sharedPreferences=context.getSharedPreferences("js_cloud_user_save_data",Context.MODE_PRIVATE);
+        return sharedPreferences.getString("cached_access_token",null);
+    }
+    public static void saveRefreshToken(Context context,String userJsonString)
+    {
+        SharedPreferences sharedPreferences=context.getSharedPreferences("js_cloud_user_save_data",Context.MODE_PRIVATE);
+        SharedPreferences.Editor editor= sharedPreferences.edit();
+        editor.putString("cached_refresh_token",userJsonString);
+        editor.commit();
+
+    }
+    public static String getRefreshToken(Context context)
+    {
+        SharedPreferences sharedPreferences=context.getSharedPreferences("js_cloud_user_save_data",Context.MODE_PRIVATE);
+        return sharedPreferences.getString("cached_refresh_token",null);
+    }
+    public static void clearCache(Context context)
+    {
+        SharedPreferences sharedPreferences=context.getSharedPreferences("js_cloud_user_save_data",Context.MODE_PRIVATE);
+        SharedPreferences.Editor editor= sharedPreferences.edit();
+        editor.clear();
+        editor.commit();
+    }
 }

@@ -8,7 +8,9 @@ import android.view.View;
 import android.widget.Toast;
 import com.example.js_auth.JSCloudAuth;
 import com.example.js_auth.JSCloudAuthActivity;
+import com.example.js_auth.Models.AuthType;
 import com.example.js_auth.Models.JSCloudUser;
+import com.example.js_auth.interfaces.SignOutResponse;
 import com.example.jscloud_core.JSCloudApp;
 
 
@@ -23,9 +25,9 @@ public class MainActivity extends JSCloudAuthActivity {
     }
 
     public void startService(View view) {
+       //
+      JSCloudAuth.getInstance().signInWithEmail(this,"astala@123.com","astala");
 
-       JSCloudAuth.getInstance().signInWithGoogle(this);
-      // JSCloudAuth.getInstance().updateCurrentUser(this,new MyUser());
     }
 
     public void stopService(View view) {
@@ -34,24 +36,53 @@ public class MainActivity extends JSCloudAuthActivity {
 
 
     public void sendCommand(View view) {
-        MyUser user=  new MyUser();
-        user.setAccessToken("123");
-        user.set_id(JSCloudAuth.getInstance().getCurrentUser().get_id());
-        user.setRefreshToken("!@#");
-        user.setYes(123);
-        user.setName("Asim Khan");
-        user.setEmail("jerin.123@gmail.com");
-        JSCloudAuth.getInstance().updateCurrentUser(this,user);
+       MyUser user= new MyUser();
+       user.setEmail("astala@123.com");
+       user.setPassword("astala");
+       user.setAuthType(AuthType.Email);
+       user.setName("Astala Khan");
+       user.setAccessToken("Some wonderful access Token");
+       user.setRefreshToken("Some wonderful refresh Token");
+       JSCloudAuth.getInstance().createUserWithEmail(this,user);
     }
 
     @Override
-    protected void onAuthResponse(boolean isAuthorized, JSCloudUser user) {
-        Toast.makeText(this,user.getName(),Toast.LENGTH_SHORT).show();
+    protected void onAuthResponse(String message, JSCloudUser user) {
+        Toast.makeText(this,message,Toast.LENGTH_SHORT).show();
     }
 
     public void currentUser(View view) {
-        MyUser user=MyUser.fromJSON(JSCloudAuth.getInstance().getCurrentUserRaw());
-        Toast.makeText(this,user.getName(),Toast.LENGTH_SHORT).show();
-        Log.e("TAG",JSCloudAuth.getInstance().getCurrentUserRaw());
+        JSCloudUser user=JSCloudAuth.getInstance().getCurrentUser();
+        String msg=JSCloudAuth.getInstance().getCurrentUser()==null
+                ?"no user logged in"
+                :MyUser.fromJSON(JSCloudAuth.getInstance().getCurrentUserRaw()).getName();
+
+        Toast.makeText(this,msg,Toast.LENGTH_SHORT).show();
+
+    }
+
+    public void signInGoogle(View view) {
+        JSCloudAuth.getInstance().signInWithGoogle(this);
+    }
+
+    public void refreshToken(View view) {
+        JSCloudAuth.getInstance().refreshMyToken();
+    }
+
+    public void signOut(View view) {
+        JSCloudAuth.getInstance().signOut();
+    }
+
+    public void updateUser(View view) {
+        MyUser user= new MyUser();
+        user.setAuthType(AuthType.Google);
+        user.setName("User_"+System.currentTimeMillis());
+        user.setSomeToken(45612);
+        user.setDesignation("Chacha jaan");
+        user.setPhone("+9178456213643");
+        user.setAccessToken("Some wonderful access Token");
+        user.setRefreshToken("Some wonderful refresh Token");
+        JSCloudAuth.getInstance().updateCurrentUser(user);
+
     }
 }

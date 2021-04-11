@@ -25,7 +25,10 @@ public class AuthRequest {
         this.authMode = authMode;
         this.idToken = idToken;
     }
-
+    public AuthRequest(AuthType authType, AuthMode authMode) {
+        this.authType = authType;
+        this.authMode = authMode;
+    }
     public AuthMode getAuthMode() {
         return authMode;
     }

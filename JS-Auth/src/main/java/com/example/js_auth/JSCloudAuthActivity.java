@@ -12,6 +12,6 @@ public abstract class JSCloudAuthActivity extends AppCompatActivity {
         super.onActivityResult(requestCode, resultCode, data);
         JSCloudAuth.getInstance().handleGoogleSignActivityResult(this,requestCode,resultCode,data);
     }
-    protected abstract void onAuthResponse(boolean isAuthorized, JSCloudUser user);
+    protected abstract void onAuthResponse(String responseMessage, JSCloudUser user);
 
 }

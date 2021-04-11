@@ -6,7 +6,24 @@
     android:orientation="vertical"
     android:gravity="center"
     tools:context=".MainActivity">
-
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+        <Button
+            android:onClick="signInGoogle"
+            android:layout_margin="5dp"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:text="Sign IN Google"/>
+        <Button
+            android:onClick="updateUser"
+            android:layout_margin="5dp"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:text="Update User"/>
+    </LinearLayout>
   <LinearLayout
       android:layout_width="match_parent"
       android:layout_height="wrap_content">
@@ -16,7 +33,7 @@
           android:layout_width="0dp"
           android:layout_height="match_parent"
           android:layout_weight="1"
-          android:text="Start Cloud Service"/>
+          android:text="Sign IN EMail"/>
       <Button
           android:onClick="stopService"
           android:layout_margin="5dp"
@@ -34,7 +51,7 @@
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
-            android:text="Send update command"/>
+            android:text="Create User"/>
         <Button
             android:onClick="currentUser"
             android:layout_margin="5dp"
@@ -42,5 +59,23 @@
             android:layout_height="match_parent"
             android:layout_weight="1"
             android:text="Current User"/>
+    </LinearLayout>
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+        <Button
+            android:onClick="refreshToken"
+            android:layout_margin="5dp"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:text="Refresh Token"/>
+        <Button
+            android:onClick="signOut"
+            android:layout_margin="5dp"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:text="Sign Out"/>
     </LinearLayout>
 </LinearLayout>
