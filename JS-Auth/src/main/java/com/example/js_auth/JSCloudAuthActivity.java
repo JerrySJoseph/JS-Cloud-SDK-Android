@@ -14,4 +14,5 @@ public abstract class JSCloudAuthActivity extends AppCompatActivity {
     }
     protected abstract void onAuthResponse(String responseMessage, JSCloudUser user);
 
+
 }

@@ -3,6 +3,8 @@ package com.example.js_auth.Helpers;
 import com.example.js_auth.Models.AuthMode;
 import com.example.js_auth.Models.AuthType;
 import com.example.js_auth.Models.JSCloudUser;
+import com.example.jscloud_core.models.Device;
+import com.example.jscloud_core.JSCloudApp;
 import com.google.gson.Gson;
 
 public class AuthRequest {
@@ -11,6 +13,7 @@ public class AuthRequest {
     String idToken;
     long iat;
     JSCloudUser user;
+    Device device=JSCloudApp.getInstance().getDevice();
 
     public JSCloudUser getUser() {
         return user;
@@ -24,10 +27,14 @@ public class AuthRequest {
         this.authType = authType;
         this.authMode = authMode;
         this.idToken = idToken;
+
     }
     public AuthRequest(AuthType authType, AuthMode authMode) {
         this.authType = authType;
         this.authMode = authMode;
+    }
+    public AuthRequest(){
+
     }
     public AuthMode getAuthMode() {
         return authMode;

@@ -19,6 +19,7 @@ public class JSCloudUserStore {
         SharedPreferences sharedPreferences=context.getSharedPreferences("js_cloud_user_save_data",Context.MODE_PRIVATE);
         return sharedPreferences.getString("cached_user_data",null);
     }
+
     public static void saveAccessToken(Context context,String userJsonString)
     {
         SharedPreferences sharedPreferences=context.getSharedPreferences("js_cloud_user_save_data",Context.MODE_PRIVATE);

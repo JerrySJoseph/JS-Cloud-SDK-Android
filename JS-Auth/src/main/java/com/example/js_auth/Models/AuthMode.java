@@ -5,5 +5,6 @@ public enum AuthMode {
     CREATE,
     CREATE_OR_SIGNIN,
     SIGN_OUT,
-    UPDATE
+    UPDATE,
+    DELETE
 }

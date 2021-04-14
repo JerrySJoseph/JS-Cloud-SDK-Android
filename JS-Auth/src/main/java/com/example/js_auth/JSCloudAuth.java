@@ -12,10 +12,12 @@ import androidx.annotation.NonNull;
 
 import com.example.js_auth.Helpers.AuthRequest;
 import com.example.js_auth.Helpers.JSCloudUserStore;
+import com.example.js_auth.Helpers.TokenUpdater;
 import com.example.js_auth.Models.AuthMode;
 import com.example.js_auth.Models.AuthType;
 import com.example.js_auth.Models.JSCloudUser;
 import com.example.js_auth.interfaces.AuthResponse;
+import com.example.js_auth.interfaces.RevokedAccessListener;
 import com.example.js_auth.interfaces.SignOutResponse;
 import com.example.jscloud_core.JSCloudApp;
 import com.google.android.gms.auth.api.signin.GoogleSignIn;
@@ -25,6 +27,12 @@ import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
 import com.google.android.gms.common.api.ApiException;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
+
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import io.socket.client.Ack;
 import io.socket.client.Socket;
@@ -38,11 +46,29 @@ public class JSCloudAuth {
     private static String TAG="JS-Cloud-Auth";
     private static Socket mSocket;
     private JSCloudUser mUser=null;
-
+    private RevokedAccessListener revokedAccessListener;
+    private static boolean tokenUpdatebBegun=false;
+    private static TokenUpdater tokenUpdater;
+    private static String mGoogleClientID=null;
     private static int RC_SIGN_IN=1011;
+    private static long defaultTokenUpdateInterval=3; //Once in 20 Minutes
 
     GoogleSignInOptions gso =null;
     GoogleSignInClient mGoogleSignInClient;
+
+    private static  final ThreadFactory sThreadFactory = new ThreadFactory() {
+        private final AtomicInteger mCount = new AtomicInteger(1);
+        public Thread newThread(Runnable r) {
+            Log.e("THREAD","created new thread");
+            return new Thread(r, "token-update-task #" + mCount.getAndIncrement());
+        }
+    };
+
+    static ScheduledThreadPoolExecutor  threadPoolExecutor;
+
+    public static void setGoogleClientID(String googleClientID) {
+        mGoogleClientID = googleClientID;
+    }
 
     public static synchronized JSCloudAuth getInstance(){
         if(mContext==null)
@@ -51,22 +77,100 @@ public class JSCloudAuth {
             mSocket=JSCloudApp.getInstance().getSocket();
         if(mInstance==null)
             mInstance=new JSCloudAuth();
+        if(tokenUpdater==null)
+            tokenUpdater=new TokenUpdater(defaultTokenUpdateInterval);
 
-        registerAuthEvents();
+
         return mInstance;
+    }
+    JSCloudAuth()
+    {
+        registerAuthEvents();
+        sendAuthHandshake();
+
+    }
+    private void sendAuthHandshake() {
+        if(getCurrentUser()==null)
+            return;
+
+       AuthRequest request= new AuthRequest();
+       request.setUser(getCurrentUser());
+        mSocket.emit("auth-handshake",request.toJSON(), new Ack() {
+            @Override
+            public void call(Object... args) {
+
+                Log.e(TAG,(String)args[1]);
+            }
+        });
     }
 
     private static void registerAuthEvents() {
-        mSocket.on("sign-out",signOutListener);
+        mSocket.on("revoke-access",signOutListener);
+        if(!tokenUpdatebBegun)
+           startTokenUpdate();
+
     }
+
+    private static void startTokenUpdate() {
+        String savedUser=JSCloudUserStore.getSavedUser(mContext);
+        if(savedUser==null || savedUser.isEmpty() || tokenUpdatebBegun)
+            return;
+        threadPoolExecutor=(ScheduledThreadPoolExecutor) Executors.newScheduledThreadPool(1,sThreadFactory);
+        threadPoolExecutor.scheduleWithFixedDelay(updateTask,5,defaultTokenUpdateInterval, TimeUnit.MINUTES);
+        tokenUpdatebBegun=true;
+    }
+
+    private static void stopTokenUpdate() {
+        if(!tokenUpdatebBegun)
+            return;
+        tokenUpdatebBegun=false;
+        threadPoolExecutor.shutdown();
+    }
+
+    static Runnable updateTask= new Runnable() {
+        @Override
+        public void run() {
+            JSCloudAuth.getInstance().refreshMyToken();
+        }
+    };
 
     static Emitter.Listener signOutListener= new Emitter.Listener() {
         @Override
         public void call(Object... args) {
-            getInstance().handleSignOut();
+            Log.e(TAG,"xxxxxxxxxxxxxxxxxxxxx Access Revoked by SERVER xxxxxxxxxxxxxxxxx");
+            try{
+                JSCloudUserStore.clearCache(mContext);
+                stopTokenUpdate();
+                new Handler(Looper.getMainLooper()).post(new Runnable() {
+                    @Override
+                    public void run() {
+                        if(getInstance().revokedAccessListener!=null)
+                            getInstance().revokedAccessListener.onAccessRevoked((String)args[0]);
+                    }
+                });
+
+            }catch (Exception e)
+            {
+                Log.e(TAG,"Error: "+e.getMessage());
+            }
+
         }
     };
 
+    public void addOnRevokeAccessListener(RevokedAccessListener revokedAccessListener){
+
+        this.revokedAccessListener = revokedAccessListener;
+    }
+    public void invoke() {
+        if(getCurrentUser()==null)
+            return;
+        mSocket.emit("invoke", getCurrentUser().get_id(), new Ack() {
+            @Override
+            public void call(Object... args) {
+
+            }
+        });
+    }
     public void signInWithEmail(JSCloudAuthActivity authActivity,String email, String password){
         AuthRequest request= new AuthRequest(AuthType.Email,AuthMode.SIGN_IN);
         JSCloudUser user= new JSCloudUser();
@@ -75,7 +179,7 @@ public class JSCloudAuth {
         request.setUser(user);
         initiateAuthFlow(authActivity,request);
     }
-    public void createUserWithEmail(JSCloudAuthActivity authActivity,JSCloudUser user){
+    public void createUser(JSCloudAuthActivity authActivity,JSCloudUser user){
         AuthRequest request= new AuthRequest(AuthType.Email,AuthMode.CREATE);
         request.setUser(user);
        initiateAuthFlow(authActivity,request);
@@ -102,12 +206,17 @@ public class JSCloudAuth {
             @Override
             public void call(Object... args) {
                 try{
-                    String message=(String)args[0];
-                    String response=(String)args[1];
+                    boolean success=(Boolean)args[0];
+                    String message=(String)args[1];
+                    String response=(String)args[2];
 
                     //Caching User data
-                    mUser=JSCloudUser.fromJSON(response);
-                    JSCloudUserStore.saveUser(mContext,response);
+                    if(success)
+                    {
+                        mUser=JSCloudUser.fromJSON(response);
+                        JSCloudUserStore.saveUser(mContext,response);
+                    }
+
                     Log.e(TAG,message);
                 }catch (Exception e)
                 {
@@ -160,14 +269,47 @@ public class JSCloudAuth {
            initiateAuthFlow(authActivity,request);
     }
 
-    private GoogleSignInOptions getGso()
-    {
+    private GoogleSignInOptions getGso() {
+        if(mGoogleClientID==null || mGoogleClientID.isEmpty())
+            throw new IllegalArgumentException("Invalid Google Client ID provided. Please set Google Client ID in Application class where you initiate JSCloudApp");
         return new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-                .requestIdToken("629362459295-krpl7a5s8cgt5b96s25jabtiotlvpkq1.apps.googleusercontent.com")
+                .requestIdToken(mGoogleClientID)
                 .requestEmail()
                 .build();
     }
 
+    public void deleteCurrentUser()
+    {
+        AuthRequest authRequest= new AuthRequest();
+        authRequest.setUser(getCurrentUser());
+        authRequest.setIdToken(JSCloudUserStore.getAccessToken(mContext));
+        authRequest.setAuthMode(AuthMode.DELETE);
+        mSocket.emit("delete-user", authRequest.toJSON(), new Ack() {
+            @Override
+            public void call(Object... args) {
+                try {
+                    boolean success=(Boolean) args[0];
+                    String message=(String)args[1];
+                    if(success)
+                    {
+                        JSCloudUserStore.clearCache(mContext);
+                        new Handler(Looper.getMainLooper()).post(new Runnable() {
+                            @Override
+                            public void run() {
+                                if(revokedAccessListener!=null)
+                                    revokedAccessListener.onAccessRevoked(message);
+                            }
+                        });
+
+                    }
+                    Log.e(TAG,message);
+                }catch (Exception e)
+                {
+                    Log.e(TAG,"Error: "+e.getMessage());
+                }
+            }
+        });
+    }
     public void refreshMyToken()
     {
         String refreshToken=JSCloudUserStore.getRefreshToken(mContext);
@@ -184,19 +326,16 @@ public class JSCloudAuth {
                         JSCloudUserStore.saveAccessToken(mContext,accessToken);
                     if(status && refreshToken!=null)
                         JSCloudUserStore.saveRefreshToken(mContext,refreshToken);
-                    Log.e(TAG,"Ack received : "+message);
-                    Log.e(TAG,"Access-Token : "+accessToken);
-                    Log.e(TAG,"Refresh-Token : "+refreshToken);
+                   if(status)
+                       Log.e(TAG,"Tokens Synced at "+System.currentTimeMillis());
                 }catch (Exception e)
                 {
-                    Log.e(TAG,"Error: "+e.getMessage());
+                    Log.e(TAG,"Token Sync Error: "+e.getMessage());
                 }
-
 
             }
         });
     }
-
 
     public void signOut(SignOutResponse signOutResponse)
     {
@@ -216,6 +355,7 @@ public class JSCloudAuth {
                     if(success)
                     {
                         handleSignOut();
+                        stopTokenUpdate();
                         new Handler(Looper.getMainLooper()).post(new Runnable() {
                             @Override
                             public void run() {
@@ -285,7 +425,7 @@ public class JSCloudAuth {
 
     private void initiateAuthFlow(JSCloudAuthActivity authActivity,AuthRequest request)
     {
-        mSocket.emit("auth-flow", request.toJSON(), new Ack() {
+        mSocket.emit("auth-flow",request.toJSON() , new Ack() {
             @Override
             public void call(Object... args) {
                 String message,response,accToken,refToken;
@@ -304,6 +444,8 @@ public class JSCloudAuth {
                     JSCloudUserStore.saveUser(authActivity,response);
                     JSCloudUserStore.saveAccessToken(authActivity,accToken);
                     JSCloudUserStore.saveRefreshToken(authActivity,refToken);
+                    startTokenUpdate();
+
                 }catch (Exception e) {
                     message=e.getMessage();
                 }finally {
@@ -314,4 +456,36 @@ public class JSCloudAuth {
         });
     }
 
+    public void sync()
+    {
+        String accessToken;
+        if(getCurrentUser()==null)
+        {
+            Log.e(TAG,"No user signed In. No sync possible");
+            return;
+        }
+        if((accessToken=JSCloudUserStore.getAccessToken(mContext))==null)
+        {
+            Log.e(TAG,"No valid access Token available. No sync possible");
+            return;
+        }
+        mSocket.emit("cloud-sync", accessToken, new Ack() {
+            @Override
+            public void call(Object... args) {
+                try{
+                    boolean status=(Boolean)args[0];
+                    String message=(String)args[1];
+                    if(status)
+                    {
+                        JSCloudUserStore.saveUser(mContext,(String)args[2]);
+                    }
+                    Log.e(TAG,message);
+                }catch (Exception e)
+                {
+                    Log.e(TAG,e.getMessage());
+
+                }
+            }
+        });
+    }
 }
