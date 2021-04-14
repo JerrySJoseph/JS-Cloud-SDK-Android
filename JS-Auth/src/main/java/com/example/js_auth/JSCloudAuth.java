@@ -27,6 +27,7 @@ import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
 import com.google.android.gms.common.api.ApiException;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
+import com.google.gson.Gson;
 
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
@@ -190,8 +191,12 @@ public class JSCloudAuth {
     public void signInAsGuest(AuthResponse responseCallback){}
 
     public JSCloudUser getCurrentUser(){
-        mUser=JSCloudUser.fromJSON(JSCloudUserStore.getSavedUser(mContext));
+        mUser=JSCloudUser.fromJSON(getCurrentUserRaw());
         return mUser;
+    }
+    public <T> T getCurrentUser(Class<T> className)
+    {
+        return new Gson().fromJson(getCurrentUserRaw(),className);
     }
 
     public String getCurrentUserRaw(){

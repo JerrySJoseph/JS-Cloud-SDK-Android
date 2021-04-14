@@ -16,6 +16,8 @@ import com.example.js_auth.Models.AuthType;
 import com.example.js_auth.Models.JSCloudUser;
 import com.example.js_auth.interfaces.SignOutResponse;
 import com.example.jscloud_core.JSCloudApp;
+import com.example.jscloud_core.interfaces.InvokeResponse;
+
 import java.util.Arrays;
 
 
@@ -37,7 +39,7 @@ public class MainActivity extends JSCloudAuthActivity  {
 
 
     public void stopService(View view) {
-        JSCloudApp.disconnect();
+        JSCloudApp.getInstance().disconnect();
     }
 
 
@@ -51,6 +53,7 @@ public class MainActivity extends JSCloudAuthActivity  {
        user.setAccessToken("Some wonderful access Token");
        user.setRefreshToken("Some wonderful refresh Token");
        JSCloudAuth.getInstance().createUser(this,user);
+
     }
 
     @Override
@@ -98,7 +101,12 @@ public class MainActivity extends JSCloudAuthActivity  {
     }
 
     public void invoke(View view) {
-        JSCloudAuth.getInstance().invoke();
+        JSCloudApp.invoke("some", JSCloudAuth.getInstance().getCurrentUser().get_id(), new InvokeResponse() {
+            @Override
+            public void onAck(Object... args) {
+                Log.e(TAG,(String)args[0]);
+            }
+        });
     }
 
     public void deleteCurrentuser(View view) {

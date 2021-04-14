@@ -10,6 +10,7 @@ import android.util.Base64;
 import android.util.Log;
 
 import com.example.jscloud_core.interfaces.CloudServerConnectionCallback;
+import com.example.jscloud_core.interfaces.InvokeResponse;
 import com.example.jscloud_core.models.Device;
 import com.example.jscloud_core.models.DeviceFactory;
 
@@ -65,11 +66,25 @@ public class JSCloudApp {
             getAppFingerPrint();
             //Connect to Server
             mSocket.connect();
+
         } catch (URISyntaxException e) {
             e.printStackTrace();
+
         }
     }
 
+    public static void invoke(String eventName, String data, InvokeResponse ack)
+    {
+        mSocket.emit(eventName, data, new Ack() {
+            @Override
+            public void call(Object... args) {
+                post(()->{
+                    if(ack!=null)
+                        ack.onAck(args);
+                });
+            }
+        });
+    }
     private static void getAppFingerPrint()
     {
        // HITKuHdiF+OJL416iFFK/P2pcVE= HITKuHdiF+OJL416iFFK/P2pcVE=
@@ -105,9 +120,7 @@ public class JSCloudApp {
                     message=(String)args[1];
                     if(!success)
                     {
-                        mSocket.off();
-                        mSocket.disconnect();
-                        mSocket.close();
+                        getInstance().disconnect();
                         String finalMessage = message;
                         post(()->{
                             if(cloudServerConnectionCallback!=null)
@@ -144,6 +157,7 @@ public class JSCloudApp {
 
         }
     };
+
     static void post(Runnable runnable)
     {
         new Handler(Looper.getMainLooper()).post(runnable);
@@ -167,12 +181,19 @@ public class JSCloudApp {
         return mDeviceFactory.newClient();
     }
 
-    public static void disconnect()
+    public void disconnect()
     {
         mSocket.off();
         mSocket.disconnect();
     }
 
+    public void connect()
+    {
+        if(mSocket==null || mInstance==null || mContext==null)
+            throw new IllegalStateException("JS cloud not initialised. Please Make sure you have Intialized JSCloudApp before calling this function");
+        if(!mSocket.connected())
+            mSocket.connect();
+    }
     public Socket getSocket()
     {
         return mSocket;
