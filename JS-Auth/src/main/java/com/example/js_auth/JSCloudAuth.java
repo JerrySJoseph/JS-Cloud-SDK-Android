@@ -181,6 +181,8 @@ public class JSCloudAuth {
         initiateAuthFlow(authActivity,request);
     }
     public void createUser(JSCloudAuthActivity authActivity,JSCloudUser user){
+        if(user.getAuthType()==null)
+            user.setAuthType(AuthType.Email);
         AuthRequest request= new AuthRequest(AuthType.Email,AuthMode.CREATE);
         request.setUser(user);
        initiateAuthFlow(authActivity,request);
@@ -421,7 +423,7 @@ public class JSCloudAuth {
                 }
             });
         }
-        else if(getCurrentUser().getAuthType()==AuthType.Email){
+        else {
             JSCloudUserStore.clearCache(mContext);
         }
 
