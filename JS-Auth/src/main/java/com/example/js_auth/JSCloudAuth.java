@@ -19,6 +19,7 @@ import com.example.js_auth.Models.JSCloudUser;
 import com.example.js_auth.interfaces.AuthResponse;
 import com.example.js_auth.interfaces.RevokedAccessListener;
 import com.example.js_auth.interfaces.SignOutResponse;
+import com.example.js_auth.interfaces.UpdateResponse;
 import com.example.jscloud_core.JSCloudApp;
 import com.google.android.gms.auth.api.signin.GoogleSignIn;
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
@@ -52,8 +53,8 @@ public class JSCloudAuth {
     private static TokenUpdater tokenUpdater;
     private static String mGoogleClientID=null;
     private static int RC_SIGN_IN=1011;
-    private static long defaultTokenUpdateInterval=3; //Once in 20 Minutes
-
+    private static long defaultTokenUpdateInterval=1000*60*15; //Once in 15 Minutes
+    String emailPattern = "[a-zA-Z0-9._-]+@[a-z]+\\.+[a-z]+";
     GoogleSignInOptions gso =null;
     GoogleSignInClient mGoogleSignInClient;
 
@@ -112,12 +113,30 @@ public class JSCloudAuth {
 
     }
 
+    public void setTokenRefreshInterval(long intervalms) {
+        stopTokenUpdate();
+        defaultTokenUpdateInterval = intervalms;
+        startTokenUpdate();
+    }
+    private boolean validateUser(JSCloudUser user)
+    {
+        if(user.getName()==null || user.getName().isEmpty())
+            throw new IllegalArgumentException("User name should not be null or empty");
+        if(user.getEmail()==null || user.getEmail().isEmpty())
+            throw new IllegalArgumentException("User email should not be null or empty");
+        if(user.getPassword()==null || user.getPassword().isEmpty())
+            throw new IllegalArgumentException("User password should not be null or empty");
+        if(!user.getEmail().matches(emailPattern))
+            throw new IllegalArgumentException("User email is not valid.");
+        return true;
+    }
+
     private static void startTokenUpdate() {
         String savedUser=JSCloudUserStore.getSavedUser(mContext);
         if(savedUser==null || savedUser.isEmpty() || tokenUpdatebBegun)
             return;
         threadPoolExecutor=(ScheduledThreadPoolExecutor) Executors.newScheduledThreadPool(1,sThreadFactory);
-        threadPoolExecutor.scheduleWithFixedDelay(updateTask,5,defaultTokenUpdateInterval, TimeUnit.MINUTES);
+        threadPoolExecutor.scheduleWithFixedDelay(updateTask,100,defaultTokenUpdateInterval, TimeUnit.MILLISECONDS);
         tokenUpdatebBegun=true;
     }
 
@@ -181,6 +200,8 @@ public class JSCloudAuth {
         initiateAuthFlow(authActivity,request);
     }
     public void createUser(JSCloudAuthActivity authActivity,JSCloudUser user){
+        if(!validateUser(user))
+            return;
         if(user.getAuthType()==null)
             user.setAuthType(AuthType.Email);
         AuthRequest request= new AuthRequest(AuthType.Email,AuthMode.CREATE);
@@ -205,7 +226,7 @@ public class JSCloudAuth {
         return JSCloudUserStore.getSavedUser(mContext);
     }
 
-    public void updateCurrentUser(JSCloudUser user) {
+    public void updateCurrentUser(JSCloudUser user, UpdateResponse updateResponse) {
         String accessToken=JSCloudUserStore.getAccessToken(mContext);
         AuthRequest request= new AuthRequest(AuthType.Google,AuthMode.UPDATE,accessToken);
         request.setUser(user);
@@ -222,18 +243,33 @@ public class JSCloudAuth {
                     {
                         mUser=JSCloudUser.fromJSON(response);
                         JSCloudUserStore.saveUser(mContext,response);
+                        post(()->{
+                            updateResponse.onUpdateResponse(true,message);
+                        });
+                    }
+                    else
+                    {
+                        post(()->{
+                            updateResponse.onUpdateResponse(false,message);
+                        });
                     }
 
                     Log.e(TAG,message);
                 }catch (Exception e)
                 {
                     Log.e(TAG,e.getMessage());
+                    post(()->{
+                        updateResponse.onUpdateResponse(false,e.getMessage());
+                    });
                 }
 
             }
         });
     }
-
+    private void post(Runnable r)
+    {
+        new Handler(Looper.getMainLooper()).post(r);
+    }
     //Google Sign In flow
     public void signInWithGoogle(JSCloudAuthActivity activity){
         GoogleSignInAccount account=GoogleSignIn.getLastSignedInAccount(activity);
@@ -271,7 +307,7 @@ public class JSCloudAuth {
     private void handleGoogleSignInResult(JSCloudAuthActivity authActivity,@NonNull GoogleSignInAccount account) {
 
             String idToken = account.getIdToken();
-            Log.e(TAG,idToken);
+          //  Log.e(TAG,idToken);
             AuthRequest request=new AuthRequest(AuthType.Google, AuthMode.CREATE_OR_SIGNIN,idToken);
            initiateAuthFlow(authActivity,request);
     }
@@ -300,12 +336,9 @@ public class JSCloudAuth {
                     if(success)
                     {
                         JSCloudUserStore.clearCache(mContext);
-                        new Handler(Looper.getMainLooper()).post(new Runnable() {
-                            @Override
-                            public void run() {
-                                if(revokedAccessListener!=null)
-                                    revokedAccessListener.onAccessRevoked(message);
-                            }
+                        post(()->{
+                            if(revokedAccessListener!=null)
+                                revokedAccessListener.onAccessRevoked(message);
                         });
 
                     }
@@ -363,35 +396,29 @@ public class JSCloudAuth {
                     {
                         handleSignOut();
                         stopTokenUpdate();
-                        new Handler(Looper.getMainLooper()).post(new Runnable() {
-                            @Override
-                            public void run() {
-                                if(signOutResponse!=null)
-                                    signOutResponse.onSignOutSuccess();
-                            }
+                        post(()->{
+                            if(signOutResponse!=null)
+                                signOutResponse.onSignOutSuccess();
                         });
+
                     }
                     else
                     {
-                        new Handler(Looper.getMainLooper()).post(new Runnable() {
-                            @Override
-                            public void run() {
-                                if(signOutResponse!=null)
-                                    signOutResponse.onSignOutFailed(message);
-                            }
+                        post(()->{
+                            if(signOutResponse!=null)
+                                signOutResponse.onSignOutFailed(message);
                         });
+
                     }
 
                 }catch (Exception e)
                 {
                    Log.e(TAG,e.getMessage());
-                    new Handler(Looper.getMainLooper()).post(new Runnable() {
-                        @Override
-                        public void run() {
-                            if(signOutResponse!=null)
-                                signOutResponse.onSignOutFailed(e.getMessage());
-                        }
-                    });
+                   post(()->{
+                       if(signOutResponse!=null)
+                           signOutResponse.onSignOutFailed(e.getMessage());
+                   });
+
                 }
 
             }
@@ -457,7 +484,10 @@ public class JSCloudAuth {
                     message=e.getMessage();
                 }finally {
                     String finalMessage = message;
-                    new Handler(Looper.getMainLooper()).post(() -> authActivity.onAuthResponse(finalMessage,mUser));
+                    post(()->{
+                        authActivity.onAuthResponse(finalMessage,mUser);
+                    });
+
                 }
             }
         });

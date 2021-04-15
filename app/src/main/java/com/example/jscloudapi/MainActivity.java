@@ -30,7 +30,7 @@ public class MainActivity extends JSCloudAuthActivity  {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
+        JSCloudAuth.getInstance().setTokenRefreshInterval(1000*5);
     }
 
     public void startService(View view) {
@@ -44,15 +44,19 @@ public class MainActivity extends JSCloudAuthActivity  {
 
 
     public void sendCommand(View view) {
+    try{
+        MyUser user= new MyUser();
+        user.setEmail("astala@somedomain.com");
+        user.setPassword("astala");
+        user.setName("Astala Khan");
+        user.setAccessToken("Some wonderful access Token");
+        user.setRefreshToken("Some wonderful refresh Token");
+        JSCloudAuth.getInstance().createUser(this,user);
+    }catch (Exception e)
+    {
+        Toast.makeText(this,e.getMessage(),Toast.LENGTH_SHORT).show();
+    }
 
-       MyUser user= new MyUser();
-       user.setEmail("astala"+"@123.com");
-       user.setPassword("astala");
-       user.setAuthType(AuthType.Email);
-       user.setName("Astala Khan");
-       user.setAccessToken("Some wonderful access Token");
-       user.setRefreshToken("Some wonderful refresh Token");
-       JSCloudAuth.getInstance().createUser(this,user);
 
     }
 
