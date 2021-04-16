@@ -97,6 +97,7 @@ public class JSCloudAuth {
 
        AuthRequest request= new AuthRequest();
        request.setUser(getCurrentUser());
+       request.setIdToken(JSCloudUserStore.getAccessToken(mContext));
         mSocket.emit("auth-handshake",request.toJSON(), new Ack() {
             @Override
             public void call(Object... args) {
@@ -217,13 +218,18 @@ public class JSCloudAuth {
         mUser=JSCloudUser.fromJSON(getCurrentUserRaw());
         return mUser;
     }
-    public <T> T getCurrentUser(Class<T> className)
-    {
+
+    public <T> T getCurrentUser(Class<T> className) {
         return new Gson().fromJson(getCurrentUserRaw(),className);
     }
 
     public String getCurrentUserRaw(){
         return JSCloudUserStore.getSavedUser(mContext);
+    }
+
+    public void updateCurrentUser(JSCloudUser user)
+    {
+        updateCurrentUser(user,null);
     }
 
     public void updateCurrentUser(JSCloudUser user, UpdateResponse updateResponse) {
@@ -244,7 +250,8 @@ public class JSCloudAuth {
                         mUser=JSCloudUser.fromJSON(response);
                         JSCloudUserStore.saveUser(mContext,response);
                         post(()->{
-                            updateResponse.onUpdateResponse(true,message);
+                            if(updateResponse!=null)
+                                updateResponse.onUpdateResponse(true,message);
                         });
                     }
                     else
@@ -266,6 +273,7 @@ public class JSCloudAuth {
             }
         });
     }
+
     private void post(Runnable r)
     {
         new Handler(Looper.getMainLooper()).post(r);
@@ -335,7 +343,7 @@ public class JSCloudAuth {
                     String message=(String)args[1];
                     if(success)
                     {
-                        JSCloudUserStore.clearCache(mContext);
+                        handleSignOut();
                         post(()->{
                             if(revokedAccessListener!=null)
                                 revokedAccessListener.onAccessRevoked(message);
