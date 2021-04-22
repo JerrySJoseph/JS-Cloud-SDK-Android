@@ -17,9 +17,9 @@ public class MyApp extends Application {
 
         JSCloudApp.setCloudServerConnectionCallback(mCloudConnectionCallback);
         JSCloudApp.init(getApplicationContext(),"http://192.168.1.26:3001");
-        JSCloudAuth.setGoogleClientID("629362459295-krpl7a5s8cgt5b96s25jabtiotlvpkq1.apps.googleusercontent.com");
+      /* JSCloudAuth.setGoogleClientID("629362459295-krpl7a5s8cgt5b96s25jabtiotlvpkq1.apps.googleusercontent.com");
 
-        handleAccessRevoked();
+        handleAccessRevoked();*/
     }
 
     CloudServerConnectionCallback mCloudConnectionCallback= new CloudServerConnectionCallback() {

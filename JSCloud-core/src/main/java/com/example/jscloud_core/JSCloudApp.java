@@ -27,7 +27,7 @@ public class JSCloudApp {
 
     private static JSCloudApp mInstance;
     private static Context mContext;
-    private static String TAG="JS-Cloud-Auth";
+    private static String TAG="JS-Cloud-App";
     private static Socket mSocket;
     private static String SHA_fingerprint=null;
     private static CloudServerConnectionCallback cloudServerConnectionCallback;

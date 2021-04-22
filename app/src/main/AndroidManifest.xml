@@ -3,7 +3,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     package="com.example.jscloudapi">
 
-    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.INTERNET" />
 
     <application
         android:name=".MyApp"
@@ -12,15 +12,22 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:usesCleartextTraffic="true"
-        android:theme="@style/Theme.JSCloudAPI">
-        <activity android:name=".MainActivity">
+        android:theme="@style/Theme.JSCloudAPI"
+        android:usesCleartextTraffic="true">
+        <activity android:name=".DbActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
+
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity android:name=".MainActivity">
 
+        </activity>
+
+        <service
+            android:name=".CloudMess"
+            android:enabled="true"></service>
     </application>
 
 </manifest>

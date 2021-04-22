@@ -44,6 +44,8 @@ dependencies {
     //Notification Provider Library
     implementation 'com.github.JerrySJoseph:NotificationProvider:v1.0.2-stable'
 
+    implementation project(path: ':JSCloud-core')
+
     testImplementation 'junit:junit:4.+'
     androidTestImplementation 'androidx.test.ext:junit:1.1.2'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.3.0'

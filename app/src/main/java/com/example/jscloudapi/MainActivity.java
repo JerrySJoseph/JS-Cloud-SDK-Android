@@ -15,6 +15,7 @@ import com.example.js_auth.JSCloudAuthActivity;
 import com.example.js_auth.Models.AuthType;
 import com.example.js_auth.Models.JSCloudUser;
 import com.example.js_auth.interfaces.SignOutResponse;
+import com.example.js_cloudmessaging.JSCloudMessaging;
 import com.example.jscloud_core.JSCloudApp;
 import com.example.jscloud_core.interfaces.InvokeResponse;
 
@@ -31,10 +32,12 @@ public class MainActivity extends JSCloudAuthActivity  {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         JSCloudAuth.getInstance().setTokenRefreshInterval(1000*5);
+        JSCloudMessaging.init(this);
+        JSCloudMessaging.getInstance().enable(CloudMess.class);
     }
 
     public void startService(View view) {
-      JSCloudAuth.getInstance().signInWithEmail(this,"astala@123.com","astala");
+      JSCloudAuth.getInstance().signInWithEmail(this,"astala@somedomain.com","astala");
     }
 
 
