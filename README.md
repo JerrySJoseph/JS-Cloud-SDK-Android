@@ -1,5 +1,5 @@
 # JS Cloud SDK for android :zap:
-JS Cloud SDK is an open-source initiative built as an extended version of BaaS systems like firebase. This SDK is still in development and is no way ready for production.
+JS Cloud SDK is an open-source initiative built as an extended version of BaaS systems like firebase. This SDK is still in development and is not ready for production yet.
 
 ## JS Auth
 Authentication API for Android. Realtime authentication
